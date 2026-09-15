@@ -1,3 +1,2 @@
-I'm studying Git!
-My first (no) repository!
-I studied git logs today!
+Я изучаю Git.
+Сегодня мой первый день.
