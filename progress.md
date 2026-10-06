@@ -2035,3 +2035,592 @@ HEAD → branch → commit
 Если эта модель станет для тебя естественной, merge, rebase, cherry-pick и даже сложные конфликты позже будут значительно понятнее.
 
 Жду твои ответы на контрольные вопросы + выводы команд из практики, ученик. 🥋
+
+🥋 DAY 3 — MERGE
+🎯 Цель дня
+К концу занятия ты должен понимать:
+- что делает git merge;
+- что такое Fast-Forward merge;
+- что такое Three-Way Merge;
+- когда появляется merge commit;
+- почему при merge одна ветка «вливается» в другую;
+- как читать историю после merge;
+- почему git merge не переносит тебя автоматически на другую ветку;
+- чем merge отличается от обычного git switch.
+1. 🧠 Теория — зачем вообще нужен Merge?
+Вчера мы научились создавать ветки.
+У нас была примерно такая история:
+A
+│
+B ← master
+
+Создали feature:
+A
+│
+B ← master
+  ↑
+feature
+
+Затем сделали коммит в feature:
+A
+│
+B ← master
+ \
+  C ← feature
+
+Теперь представь, что работа над feature закончена.
+Мы хотим получить её изменения в master.
+Вот для этого существует:
+git merge
+
+То есть:
+Merge объединяет историю текущей ветки с другой веткой.
+
+Например:
+git switch master
+git merge feature
+
+Здесь очень важно:
+Мы находились на master.
+Поэтому именно master является веткой, в которую мы вливаем feature.
+2. 🔥 Самая важная мысль сегодняшнего дня
+Запомни:
+git merge feature
+
+не означает:
+«Переключись на feature».
+
+И не означает:
+«Сделай feature главной».
+
+Это означает:
+«Возьми изменения из feature и объедини их с той веткой, на которой я сейчас нахожусь».
+
+Например:
+A──B──C
+    ↑  ↑
+ master feature
+
+Если выполнить:
+git switch master
+git merge feature
+
+Git объединяет feature в master.
+3. 🌿 Первый тип merge — Fast-Forward
+Начнём с самого простого случая.
+Представим:
+A
+│
+B ← master
+ \
+  C ← feature
+
+На самом деле здесь master просто находится позади feature.
+История выглядит так:
+A ── B ── C
+     ↑    ↑
+   master feature
+
+Если feature содержит все коммиты master плюс несколько новых, Git может просто передвинуть указатель master.
+До:
+A ── B ── C
+     ↑    ↑
+   master feature
+
+После:
+A ── B ── C
+          ↑
+       master
+       feature
+
+Никакого нового коммита не создаётся.
+Это называется:
+Fast-Forward
+То есть буквально:
+«быстро перемотать указатель вперёд».
+
+4. 🧠 Почему это возможно?
+Потому что Git видит:
+master
+   ↓
+   B
+   │
+   C
+   ↑
+feature
+
+B является прямым предком C.
+Поэтому Git говорит:
+«Зачем мне создавать дополнительный commit? Просто передвину master на C.»
+
+И всё.
+5. 🧪 Практика №1 — Fast-Forward
+Создай новый репозиторий:
+D:\git-studying\git-day3
+
+Перейди в него:
+cd D:\git-studying\git-day3
+
+Инициализируй:
+git init
+
+Проверь:
+git status
+
+У тебя, скорее всего, снова будет:
+On branch master
+
+Это нормально.
+Создаём первый коммит
+Создай файл:
+app.txt
+
+Содержимое:
+Version 1
+
+Затем:
+git add app.txt
+git commit -m "Initial version"
+
+Проверь:
+git log --oneline --decorate
+
+Будет примерно:
+A1B2C3D (HEAD -> master) Initial version
+
+6. Создаём feature
+Теперь:
+git switch -c feature
+
+Проверь:
+git branch
+
+Должно быть:
+* feature
+  master
+
+Добавь в app.txt:
+Version 1
+Feature version
+
+Сделай commit:
+git add app.txt
+git commit -m "Add feature"
+
+Теперь:
+git log --oneline --decorate --all
+
+Примерно:
+B2B2B2B (HEAD -> feature) Add feature
+A1A1A1A (master) Initial version
+
+И визуально:
+A ── B
+↑    ↑
+master feature
+
+7. 🔥 Теперь сам Merge
+Переключаемся на master:
+git switch master
+
+Проверяем:
+git log --oneline --decorate --all
+
+Теперь:
+B2B2B2B (feature) Add feature
+A1A1A1A (HEAD -> master) Initial version
+
+Теперь выполняем:
+git merge feature
+
+Git, скорее всего, напишет что-то вроде:
+Fast-forward
+
+После этого:
+git log --oneline --decorate --all
+
+Получим:
+B2B2B2B (HEAD -> master, feature) Add feature
+A1A1A1A Initial version
+
+Обрати внимание! 👀
+Раньше:
+A ── B
+↑    ↑
+master feature
+
+После merge:
+A ── B
+     ↑
+     master
+     feature
+
+Новый commit не появился.
+Git просто передвинул master.
+8. ⚠️ Очень важный нюанс
+Многие новички думают:
+«Merge всегда создаёт новый commit».
+
+❌ Нет.
+Возможны разные варианты.
+Первый:
+Fast-Forward
+A ── B
+     ↑
+master
+feature
+
+Нового commit нет.
+Второй:
+Three-Way Merge
+Может появиться отдельный merge commit:
+       C ── D
+      /      \
+A ── B        M
+      \      /
+       E ── F
+
+Вот это уже гораздо интереснее.
+9. 🧠 Three-Way Merge
+Представим, что после создания feature мы продолжаем работать и в master, и в feature.
+Получаем:
+        C ← feature
+       /
+A ── B
+       \
+        D ← master
+
+То есть ветки разошлись.
+master получил свой commit:
+D
+
+feature получила свой:
+C
+
+Теперь Git не может просто передвинуть указатель.
+Почему?
+Потому что:
+master → D
+feature → C
+
+Обе ветки содержат уникальные коммиты.
+Git должен объединить две линии истории.
+10. 🔀 Merge Commit
+Когда Gitу нужно объединить такие истории, он может создать специальный commit:
+        C
+       / \
+A ── B   M ← master
+       \ /
+        D
+
+M — merge commit.
+И вот здесь появляется очень важная особенность:
+Обычный commit обычно имеет одного родителя:
+B → A
+
+А merge commit имеет двух родителей:
+M
+↙ ↘
+C   D
+
+То есть он говорит:
+«Я объединяю две линии истории».
+
+11. 🧠 Почему называется Three-Way Merge?
+Git рассматривает три точки:
+             feature
+                ↓
+                C
+               /
+              B  ← общий предок
+               \
+                D
+                ↑
+              master
+
+Git сравнивает:
+1. общий предок — B;
+2. состояние feature — C;
+3. состояние master — D.
+Отсюда:
+Three-Way Merge
+
+Три состояния участвуют в объединении.
+Это очень важно понять перед следующим днём, потому что Day 4 будет посвящён конфликтам.
+12. 🥋 Практика №2 — настоящий Three-Way Merge
+Теперь создадим ситуацию, где Git действительно должен будет объединить две ветки.
+У нас уже есть:
+A ── B
+
+После предыдущего упражнения у тебя, скорее всего:
+A ── B
+     ↑
+master
+feature
+
+Нам нужно сделать так, чтобы обе ветки получили свои собственные коммиты.
+Шаг 1
+На master измени app.txt:
+Version 1
+Master version
+
+Сделай:
+git add app.txt
+git commit -m "Update master"
+
+Теперь:
+        feature
+           ↓
+A ── B ── C
+     ↑
+   master
+
+Стоп — здесь направление не такое, потому что master получил новый commit.
+Правильная схема:
+A ── B ── C ← master
+     \
+      D ← feature
+
+Но нам сначала нужно перейти в feature и сделать там отдельный commit.
+Шаг 2
+Переключись:
+git switch feature
+
+Измени app.txt, например:
+Version 1
+Feature version
+
+И:
+git add app.txt
+git commit -m "Update feature"
+
+Теперь история:
+        C ← master
+       /
+A ── B
+       \
+        D ← feature
+
+13. 🔥 Теперь самое главное
+Переключись:
+git switch master
+
+И выполни:
+git merge feature
+
+Git должен создать merge commit или, если изменения затронули одни и те же строки, остановиться на конфликте.
+Мы пока не будем глубоко разбирать конфликт — это тема Day 4.
+Но если Git создаст merge commit, история будет примерно:
+        C ──┐
+       /    │
+A ── B      M ← master
+       \    │
+        D ──┘
+
+Проверь:
+git log --oneline --decorate --graph --all
+
+Вот эта команда сегодня особенно полезна:
+git log --oneline --decorate --graph --all
+
+Она позволит увидеть структуру ветвления прямо в терминале.
+14. 🎨 Очень важная команда
+Запомни:
+git log --oneline --decorate --graph --all
+
+Например:
+*   7f123ab (HEAD -> master) Merge branch 'feature'
+|\
+| * 91abcde (feature) Update feature
+* | 82def12 Update master
+|/
+* 1234567 Initial version
+
+Теперь ты буквально видишь историю.
+       Update master
+      /
+Initial
+      \
+       Update feature
+             \
+            Merge
+
+15. 🧠 Ещё один важный нюанс
+Когда ты выполняешь:
+git merge feature
+
+текущая ветка не меняется.
+Например:
+git switch master
+git merge feature
+
+После merge ты всё ещё находишься:
+master
+
+а не:
+feature
+
+Это принципиально важно.
+Merge означает:
+«Влить feature в текущую ветку»
+
+а не:
+«Перейти на feature».
+
+16. 🥋 Ментальная модель
+Хочу, чтобы у тебя в голове закрепилась такая картинка.
+Branch
+Это указатель:
+master ──→ C
+
+HEAD
+Указывает на текущую ветку:
+HEAD ──→ master ──→ C
+
+Merge
+Говорим:
+git switch master
+git merge feature
+
+То есть:
+             feature
+                ↓
+A ── B ──────── C
+     ↑
+   master
+
+Git пытается сделать:
+feature
+   ↓
+   C
+  / \
+ B   ...
+ ↑
+master
+
+Если возможно просто передвинуть master → Fast-Forward.
+Если ветки разошлись → Git объединяет две линии → Merge Commit.
+17. ⚠️ Важные нюансы
+Нюанс №1
+git merge работает с текущей веткой.
+git switch master
+git merge feature
+
+→ feature вливается в master.
+Нюанс №2
+Fast-Forward не создаёт новый commit.
+A ── B
+     ↑
+ master
+ feature
+
+Нюанс №3
+Если истории разошлись, может появиться merge commit.
+      C
+     / \
+A ── B  M
+     \ /
+      D
+
+Нюанс №4
+Merge commit может иметь двух родителей.
+Это одна из причин, почему Git способен хранить сложную структуру истории.
+Нюанс №5
+git merge не удаляет ветку.
+После:
+git merge feature
+
+ветка feature всё ещё существует.
+Удалять её можно отдельно:
+git branch -d feature
+
+Но сегодня этого делать не надо.
+🧪 18. Проверка понимания
+Не спеши смотреть ниже — сначала ответь сам. 🥋
+Вопрос 1
+Есть:
+A ── B
+     ↑
+   master
+
+Создали feature, сделали один commit:
+A ── B ── C
+     ↑    ↑
+   master feature
+
+Выполняем:
+git switch master
+git merge feature
+
+Создастся ли новый merge commit? Почему?
+Вопрос 2
+Что делает:
+git merge feature
+
+если ты находишься на master?
+Вопрос 3
+После:
+git switch master
+git merge feature
+
+на какой ветке ты останешься?
+Вопрос 4
+Чем отличается:
+Fast-Forward
+от
+Three-Way Merge?
+Вопрос 5
+Почему в Three-Way Merge может появиться специальный merge commit?
+🥋 19. Практическое задание дня
+После теории выполни в git-day3:
+Часть A
+Создай:
+A — Initial version
+
+Часть B
+Создай feature и сделай в ней commit.
+Часть C
+Сделай merge feature в master.
+Часть D
+Создай ситуацию, где master и feature разойдутся, то есть обе ветки получат свои коммиты.
+Часть E
+Сделай второй merge.
+Часть F
+Покажи:
+git log --oneline --decorate --graph --all
+
+И обязательно выполни:
+git status
+
+📝 20. Финальный экзамен Day 3
+Ответь своими словами, без поиска:
+1. Что такое git merge?
+2. Что означает Fast-Forward?
+3. Почему при Fast-Forward не создаётся новый commit?
+4. Что такое merge commit?
+5. Сколько родителей может иметь обычный commit? А merge commit?
+6. Почему Three-Way Merge называется именно так?
+7. Если я нахожусь на master и выполняю:
+git merge feature
+
+какая ветка является целевой?
+8. После git merge feature я автоматически перейду на feature?
+9. Удаляется ли feature после успешного merge?
+10. Объясни своими словами разницу между:
+A ── B ── C
+
+и
+      C ──┐
+     /    │
+A ── B    M
+     \    │
+      D ──┘
+
+🥋 Главное правило сегодняшнего дня
+Запомни одну фразу:
+git merge X — это «влить X в текущую ветку».
+
+И вторую:
+Fast-Forward — просто передвинули указатель. Three-Way Merge — объединили две разошедшиеся линии истории.
+
+Когда выполнишь практику, пришли мне вывод git log --oneline --decorate --graph --all и ответы на экзамен. Я разберу их как сэнсэй: где всё идеально, где есть неточность, и после этого засчитаем Day 3. 🥋
